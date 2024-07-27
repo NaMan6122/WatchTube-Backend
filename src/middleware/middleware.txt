@@ -1,0 +1,28 @@
+Middleware
+Middleware functions are functions that have access to the request (req), response (res),
+and the next middleware function in the application’s request-response cycle.
+They can perform a variety of tasks such as logging, authentication, parsing request bodies, etc.
+
+Middleware functions are used to process requests before they reach the route handlers. 
+They can modify the req and res objects, perform tasks like logging, authentication, or parsing request bodies, 
+and then pass control to the next middleware function or route handler.
+
+import express from 'express';
+const app = express();
+
+// Logger middleware
+function logger(req, res, next) {
+    console.log(`${req.method} ${req.url}`);
+    next(); // Passes control to the next middleware or route handler
+}
+
+// Use middleware globally
+app.use(logger);
+
+app.get('/', (req, res) => {
+    res.send('Hello World');
+});
+
+app.listen(3000, () => {
+    console.log('Server is running on port 3000');
+});

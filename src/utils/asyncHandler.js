@@ -1,9 +1,10 @@
 const asyncHandlerMW = (func) => {
-    (req, res, next) => {
+    return (req, res, next) => {
         return Promise.resolve(func(req, res, next)).catch((error) => next(error));
     }
 }
 
+//higher order function, accepts a function as a parameter and returns a function as well.
 const asyncHandler = (func) => async (req, res, next) => {
     try {
         await func(req, res, next);

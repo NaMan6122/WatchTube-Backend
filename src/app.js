@@ -20,9 +20,13 @@ app.use(express.urlencoded({
 
 //static files, learn about them if needed.
 app.use(express.static("public"))
-
 app.use(cookieParser());
 
+//importing routes:
+import userRouter from "./routes/user.routes.js"
+//when someone accesses /users, the control is passed to the userRouter, which decides where to go next, user.routes.js.
+app.use("/api/v1/users", userRouter);
+//http://localhost:2000/api/v1/users/register
 
 export { app }
 

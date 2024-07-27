@@ -1,0 +1,20 @@
+Controllers
+Controllers are responsible for handling incoming requests and returning responses to the client.
+They contain the logic for different actions that can be performed on the data and are typically organized
+by resource (e.g., users, products).
+Controllers are responsible for handling the logic associated with
+different actions (like getting data, saving data, etc.).
+
+// User controller
+const userController = {
+    getAllUsers: (req, res) => {
+        // Logic to get all users
+        res.send("Get all users");
+    },
+    createUser: (req, res) => {
+        // Logic to create a user
+        res.send("User created");
+    }
+};
+
+export default userController;

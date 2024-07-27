@@ -1,0 +1,16 @@
+Routes
+Routes define the endpoints of your application and specify which controller functions should be called
+for each endpoint. They map HTTP methods and URLs to the corresponding controller actions.
+Routes define the endpoints (URLs) of your application and specify which controller functions should be 
+called for each endpoint. They map HTTP methods (GET, POST, etc.) and URLs to the corresponding controller actions.
+
+import express from 'express';
+import userController from './controllers/userController';
+
+const router = express.Router();
+
+// Define routes
+router.get('/users', userController.getAllUsers);
+router.post('/users', userController.createUser);
+
+export default router;
