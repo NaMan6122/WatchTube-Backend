@@ -3,6 +3,7 @@ import { ApiError } from "../utils/apiError.js"
 import { User } from "../models/userModel.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
+import path from "path"
 
 const registerUser = asyncHandler( async (req, res) => {
     //get data from  frontend fields, acc to user schema.
@@ -27,7 +28,7 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 
     //checking if user exits.
-    const existingUser = User.findOne({
+    const existingUser = await User.findOne({
         $or: [{username}, {email}]
     });
     if(existingUser){
@@ -35,12 +36,17 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 
     //checking for images, avatar is mandatory and coverImage is optional.
-    const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImageLocalPath[0]?.path;
+    //console.log(req.files)
+    const avatarFile = req.files?.avatar?.[0];
+    const coverImageFile = req.files.coverImage? req.files.coverImage?.[0] : "";
 
-    if(!avatarLocalPath){
+    if (!avatarFile) {
         throw new ApiError(400, "Avatar image is required!");
     }
+
+    // Use path.join to handle path separators, for windows(// \\ issues in paths)
+    const avatarLocalPath = path.resolve(avatarFile.path);
+    const coverImageLocalPath = coverImageFile ? path.resolve(coverImageFile.path) : null;
 
     //uploading images to cloudinary.
     const avatar = await uploadOnCloudinary(avatarLocalPath);
