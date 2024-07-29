@@ -1,4 +1,4 @@
-import {v2 as cloudinary} from cloudinary;
+import {v2 as cloudinary} from "cloudinary";
 import fs from "fs"; //Node.js file system module.
 
 //setting up cloudinary.
@@ -23,6 +23,7 @@ const uploadOnCloudinary = async (localFilePath) => {
         return null;
     }
 }
+export {uploadOnCloudinary}
 
 // documentation method:
 // cloudinary.v2.uploader.upload("https://images.app.goo.gl/ntKhKQm2a4q7DQ1x9",

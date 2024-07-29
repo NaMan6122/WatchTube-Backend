@@ -16,3 +16,5 @@ const storage = multer.diskStorage({
   //creating the upload variable using multer function:
   //The multer function expects an object with configuration options, not the storage object itself. 
 export const upload = multer({storage : storage});
+
+//middleware basically adds more fields in the request object, such as req.files by multer.

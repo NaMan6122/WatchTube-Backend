@@ -88,4 +88,4 @@ userModel.methods.generateRefreshToken = async () => {
     return token;
 }
 
-export const User = mongooose.Model("User", userModel);
+export const User = mongoose.model("User", userModel);

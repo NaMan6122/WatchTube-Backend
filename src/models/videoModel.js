@@ -46,4 +46,4 @@ videoModel.plugin(mongooseAggregatePaginate);
 //Pagination allows you to fetch a subset of the results, 
 //which is particularly useful for displaying data in a user interface.
 
-export const Video = mongoose.Model("Video", videoModel);
+export const Video = mongoose.model("Video", videoModel);
