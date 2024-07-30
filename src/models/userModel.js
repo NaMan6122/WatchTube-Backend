@@ -56,7 +56,7 @@ userModel.pre("save", async function (next) {
 });
 
 //injecting a custom method, feature of mongoose.
-userModel.methods.isPasswordCorrect = async () => {
+userModel.methods.isPasswordCorrect = async (password) => {
     return await bcrypt.compare(password, this.password);
     //password : raw new password entered by the user.
     //this.password : hashed password stored in the database.

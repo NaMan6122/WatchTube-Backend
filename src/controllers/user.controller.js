@@ -5,6 +5,24 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import path from "path"
 
+
+const generateAccessAndRefreshToken = async (userId) => {
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        //since refreshToken is also stored in the DB, we update the DB field with the refreshToken.
+        user.refreshToken = refreshToken;
+        //validateBeforeSave is necessary as we are only updating a value but mongoose by default expects all fields, which might cause an error, as we are updating only one.
+        await user.save({validateBeforeSave : false})
+        return {accessToken, refreshToken};
+
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong, cannot generate Tokens!")
+    }
+}
+
 const registerUser = asyncHandler( async (req, res) => {
     //get data from  frontend fields, acc to user schema.
     //check if user already exists.
@@ -96,4 +114,92 @@ const registerUser = asyncHandler( async (req, res) => {
     // });
 });
 
-export {registerUser};
+const loginUser = asynchandler( async(req, res) => {
+    //get data from user, frontend.(using req.body)
+    //check if neither of the required fields are empty.
+    //check if the user exists in the database(User.findOne($or: [{username}, {email}]))
+    //if the user exists, validate if the password given by the user is correct or not, using bcrypt.compare().
+    //generate access and refresh tokens, as secure cookies.
+
+    //return response to the frontend using res.
+
+    const {username, email, password} = req.body;
+    console.log(username, email, password); 
+
+    //checking the validity of the field.
+    if(!username || !email){
+        throw new ApiError(400, "Username or email is required");
+    }
+
+    const user = await User.findOne({
+        $or: [{username}, {email}],
+    })
+
+    if(!user){
+        throw new ApiError(404, "User not found");
+    }
+
+    const isValidPassword = await user.isPasswordCorrect(password);
+    if(!isValidPassword){
+        throw new ApiError(401, "Invalid password");
+    }
+
+    const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id);
+
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+    //additional and imp cookie parameter, which prevents any modifications in the cookie from frontend.
+    //only server can modify the cookies, where "cookieOptions" is passed.
+    const cookieOptions = {
+        httpOnly: true,
+        secure: true,
+    }
+
+    //final step, sending a response to the user.
+    res.status(200)
+    //.cookie(key, value, security/access options object).
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json(
+        new ApiResponse(200, 
+            {
+                user: loggedInUser, accessToken, refreshToken //this user object is data defined in ApiResponse.
+            },
+            "User logged in successfully"
+        )
+    )
+});
+
+const logoutUser = asyncHandler( async(req, res) => {
+    //clear refreshToken from DB, accessToken from cookie.
+    //we will use a middleware hereto implement the logout functionality.
+
+    //deleting the refreshToken.
+    await User.findByIdAndUpdate(req.user._id,
+        {
+            $set: {
+                refreshToken: undefined,
+            }
+        },
+        {
+            new: true,
+        }
+    )
+
+    //deleting the accessToken from cookie.
+    const cookieOptions = {
+        httpOnly: true,
+        secure: true,
+    }
+
+    return res.status(200)
+    .clearCookie("accessToken", cookieOptions)
+    .clearCookie("refreshToken", cookieOptions)
+    .json(new ApiResponse(200, {}, "User logged out successfully"))
+});
+
+export{
+    loginUser,
+    logoutUser,
+    registerUser,
+}
