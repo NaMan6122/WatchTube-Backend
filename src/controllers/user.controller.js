@@ -9,8 +9,10 @@ import path from "path"
 const generateAccessAndRefreshToken = async (userId) => {
     try {
         const user = await User.findById(userId)
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
+        const accessToken = await user.generateAccessToken()
+        const refreshToken = await user.generateRefreshToken()
+        //console.log(accessToken);
+        //console.log(refreshToken);
 
         //since refreshToken is also stored in the DB, we update the DB field with the refreshToken.
         user.refreshToken = refreshToken;
@@ -35,7 +37,7 @@ const registerUser = asyncHandler( async (req, res) => {
     //send/return response back to frontend.
 
     const {username, fullName, email, password} = req.body;
-    //console.log(username, fullName, email, password);
+    console.log(username, fullName, email, password);
     
     if( //validation.
         [fullName, username, password, email].some((field) => {
@@ -114,7 +116,7 @@ const registerUser = asyncHandler( async (req, res) => {
     // });
 });
 
-const loginUser = asynchandler( async(req, res) => {
+const loginUser = asyncHandler( async(req, res) => {
     //get data from user, frontend.(using req.body)
     //check if neither of the required fields are empty.
     //check if the user exists in the database(User.findOne($or: [{username}, {email}]))
@@ -124,10 +126,11 @@ const loginUser = asynchandler( async(req, res) => {
     //return response to the frontend using res.
 
     const {username, email, password} = req.body;
+    console.log(req.body)
     console.log(username, email, password); 
 
     //checking the validity of the field.
-    if(!username || !email){
+    if(!(username || email)){
         throw new ApiError(400, "Username or email is required");
     }
 
@@ -138,21 +141,23 @@ const loginUser = asynchandler( async(req, res) => {
     if(!user){
         throw new ApiError(404, "User not found");
     }
-
     const isValidPassword = await user.isPasswordCorrect(password);
+
     if(!isValidPassword){
         throw new ApiError(401, "Invalid password");
     }
 
     const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id);
+    //console.log(accessToken, refreshToken);
 
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+    //console.log(loggedInUser);
 
     //additional and imp cookie parameter, which prevents any modifications in the cookie from frontend.
     //only server can modify the cookies, where "cookieOptions" is passed.
     const cookieOptions = {
         httpOnly: true,
-        secure: true,
+        secure: false,
     }
 
     //final step, sending a response to the user.
@@ -172,7 +177,7 @@ const loginUser = asynchandler( async(req, res) => {
 
 const logoutUser = asyncHandler( async(req, res) => {
     //clear refreshToken from DB, accessToken from cookie.
-    //we will use a middleware hereto implement the logout functionality.
+    //we will use a middleware here to implement the logout functionality.
 
     //deleting the refreshToken.
     await User.findByIdAndUpdate(req.user._id,
@@ -189,7 +194,7 @@ const logoutUser = asyncHandler( async(req, res) => {
     //deleting the accessToken from cookie.
     const cookieOptions = {
         httpOnly: true,
-        secure: true,
+        secure: false,
     }
 
     return res.status(200)

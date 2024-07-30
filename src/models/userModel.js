@@ -56,14 +56,15 @@ userModel.pre("save", async function (next) {
 });
 
 //injecting a custom method, feature of mongoose.
-userModel.methods.isPasswordCorrect = async (password) => {
+userModel.methods.isPasswordCorrect = async function(password) {
+    //console.log("hi")
     return await bcrypt.compare(password, this.password);
     //password : raw new password entered by the user.
     //this.password : hashed password stored in the database.
-}
+};
 
 //generating tokens using jwt by injecting custom methods in schema.
-userModel.methods.generateAccessToken = async () => {
+userModel.methods.generateAccessToken = async function() {
     const token = jwt.sign({
         _id: this._id.toString(),
         email: this.email,
@@ -74,10 +75,11 @@ userModel.methods.generateAccessToken = async () => {
     {
         expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
     });
+    //console.log(`accessToken: ${token}`);
     return token;
 }
 
-userModel.methods.generateRefreshToken = async () => {
+userModel.methods.generateRefreshToken = async function() {
     const token = jwt.sign({
         _id: this._id.toString(),
     },
@@ -85,6 +87,7 @@ userModel.methods.generateRefreshToken = async () => {
     {
         expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
     });
+    //console.log(`refreshToken: ${token}`);
     return token;
 }
 

@@ -10,11 +10,11 @@ app.use(cors({
 }));
 
 app.use(express.json({
-    limit: "50kb",
+    limit: "500kb",
 }));
 
 app.use(express.urlencoded({
-    limit: "50kb",
+    limit: "500kb",
     extended: true,
 }));
 
