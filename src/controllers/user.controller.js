@@ -3,7 +3,8 @@ import { ApiError } from "../utils/apiError.js"
 import { User } from "../models/userModel.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
-import path from "path"
+import jwt from "jsonwebtoken";
+import path from "path";
 
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -197,14 +198,55 @@ const logoutUser = asyncHandler( async(req, res) => {
         secure: false,
     }
 
+    console.log("User Logged Out!!");
     return res.status(200)
     .clearCookie("accessToken", cookieOptions)
     .clearCookie("refreshToken", cookieOptions)
     .json(new ApiResponse(200, {}, "User logged out successfully"))
 });
 
+const refreshAccessToken = asyncHandler( async(req, res) => {
+    //fetch the refreshToken from the cookies as we will need it for the generation of new accessToken.
+    const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    if(!incomingRefreshToken){
+        throw new ApiError(401, "Unauthorized Request!!");
+    }
+
+    //verify the refreshToken.
+    const decoded = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+    //check if the user still exists in the database.
+    const user = await User.findById(decoded?._id);
+    if(!user){
+        throw new ApiError(401, "Invalid RefreshToken!!");
+    }
+
+    //now we have to match the encoded refreshToken stored in the database with our incomingRefreshToken.
+    if(user?.refreshToken !== incomingRefreshToken){
+        throw new ApiError(401, "Different RefreshTokens, Access Denied!!");
+    }
+
+    //generate a new accessToken.
+    const cookieOptions = {
+        httpOnly: true,
+        secure: false,
+    }
+    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
+    return res.status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json(
+        new ApiResponse(
+            200, 
+            {accessToken, refreshToken},
+            "New Access Token and Refresh Token generated successfully!!"
+        )
+    )
+});
+
 export{
     loginUser,
     logoutUser,
     registerUser,
+    refreshAccessToken,
 }
