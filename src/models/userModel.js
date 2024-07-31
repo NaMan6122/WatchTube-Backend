@@ -46,6 +46,7 @@ const userModel = new mongoose.Schema({
 //now hashing and storing password:
 //pre is a hook in mongoose whose functionality is to modify any passed Schema data such as password encryption,
 //just before it is saved to the database(thats what a hook means!).
+//this will execute whenever user.save will run in any file.
 
 userModel.pre("save", async function (next) {
     if(this.isModified("password")){ //checking if the password field is modified or not.

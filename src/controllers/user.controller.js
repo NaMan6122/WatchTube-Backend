@@ -24,7 +24,7 @@ const generateAccessAndRefreshToken = async (userId) => {
     } catch (error) {
         throw new ApiError(500, "Something went wrong, cannot generate Tokens!")
     }
-}
+};
 
 const registerUser = asyncHandler( async (req, res) => {
     //get data from  frontend fields, acc to user schema.
@@ -99,19 +99,6 @@ const registerUser = asyncHandler( async (req, res) => {
         new ApiResponse(200, createdUser, "User registered successfully!!"),
     )
         
-    
-
-
-
-
-
-
-
-
-
-
-
-
     // res.status(200).json({
     //     message: "User registered successfully",
     // });
@@ -244,9 +231,113 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
     )
 });
 
+const changePassword = asyncHandler( async(req, res) => {
+    const {oldPassword, newPassword} = req.body;
+    const user = await User.findById(req.user?._id);
+    if(!user){
+        throw new ApiError(401, "Unauthorized Request!!");
+    }
+    const isCorrect = await user.isPasswordCorrect(oldPassword);
+    if(!isCorrect){
+        throw new ApiError(400, "Invalid Password Entered!");
+    }
+
+    user.password = newPassword;
+    user.save({validateBeforeSave : false});
+
+    return res.status(200)
+    .json(new ApiResponse(200, {}, "Password Changed Successfully!!"));
+});
+
+const getCurrentUser = asyncHandler( async(req, res) => {
+    return res.status(200)
+    .json(200, req.user, "User Fetched Successfully!!");
+});
+
+const updateUserProfile = asyncHandler( async(req, res) => {
+    const {fullName, email} = req.body;
+    if(!fullName || !email){
+        throw new ApiError(400, "All Fields Are Required!!");
+    };
+    // const user = await User.findById(req.user?._id);
+    // if(!user){
+    //     throw new ApiError(401, "Unauthorized Request!!");
+    // };
+    // user.fullName = fullName;
+    // user.email = email;
+    // user.save({validateBeforeSave : false});
+
+    const user = await User.findByIdAndUpdate(req.user?._id,
+        {
+            $set: {
+                fullName : fullName,
+                email : email,
+            }
+        },
+        {new : true}
+    ).select("-password -refreshToken")
+
+    return res.status(200)
+    .json(new ApiResponse(200, {}, "User Profile Updated Successfully!!"));
+});
+
+const updateUserAvatar = asyncHandler( async(req, res) => {
+    const newAvatarLocalPath = req.file?.path;
+    if(!newAvatarLocalPath){
+        throw new ApiError(400, "No Avatar Image Found!");
+    }
+
+    newAvatarLocalPath = path.resolve(newAvatarLocalPath); //necessary for windows(\\, //).
+    const newAvatar = await uploadOnCloudinary(newAvatarLocalPath); //uploading on cloudinary.
+
+    if(!newAvatar.url){
+        throw new ApiError(500, "Avatar Upload Failed");
+    }
+    const user = await User.findByIdAndUpdate(req.user?._id,
+        {
+            $set: {
+                avatar : newAvatar.url,
+            }
+        },
+        {new : true}
+    ).select("-password -refreshToken");
+
+    return res.status(200)
+    .json(new ApiResponse(200, user, "Avatar Image Updated Successfully!!")); 
+});
+
+const updateCoverImage = asyncHandler( async(req, res) => {
+    const newCoverLocalPath = req.file?.path;
+    if(!newCoverLocalPath){
+        throw new ApiError(400, "No Cover Image Found!!");
+    }
+    newCoverLocalPath = path.resolve(newCoverLocalPath); //again, necessary for windows.
+    const newCover = await uploadOnCloudinary(newCoverLocalPath); //uploading on cloudinary.
+    if(!newCover.url){
+        throw new ApiError(500, "CoverImage Uplaod Failed!!");
+    }
+
+    User.findByIdAndUpdate(req.user._id,
+        {
+            $set: {
+                coverImage: newCover.url,
+            }
+        },
+        {new : true}
+    ).select("-password -refreshToken");
+
+    return res.status(200)
+    .json(new ApiResponse(200, user, "Cover Image Changed Successfully!!"))
+});
+
 export{
     loginUser,
     logoutUser,
     registerUser,
     refreshAccessToken,
+    changePassword,
+    getCurrentUser,
+    updateUserProfile,
+    updateUserAvatar,
+    updateCoverImage,
 }
