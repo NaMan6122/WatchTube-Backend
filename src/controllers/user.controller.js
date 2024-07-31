@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js" //importing the wrapper for async functions.
 import { ApiError } from "../utils/apiError.js"
 import { User } from "../models/userModel.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken";
 import path from "path";
@@ -251,7 +251,10 @@ const changePassword = asyncHandler( async(req, res) => {
 
 const getCurrentUser = asyncHandler( async(req, res) => {
     return res.status(200)
-    .json(200, req.user, "User Fetched Successfully!!");
+    .json(new ApiResponse(200,
+        req.user,
+        "User Fetched Successfully!!",
+    ));
 });
 
 const updateUserProfile = asyncHandler( async(req, res) => {
@@ -282,7 +285,7 @@ const updateUserProfile = asyncHandler( async(req, res) => {
 });
 
 const updateUserAvatar = asyncHandler( async(req, res) => {
-    const newAvatarLocalPath = req.file?.path;
+    let newAvatarLocalPath = req.file?.path;
     if(!newAvatarLocalPath){
         throw new ApiError(400, "No Avatar Image Found!");
     }
@@ -293,6 +296,8 @@ const updateUserAvatar = asyncHandler( async(req, res) => {
     if(!newAvatar.url){
         throw new ApiError(500, "Avatar Upload Failed");
     }
+    const oldUser = await User.findById(req.user._id);
+    const oldAvatarPath = oldUser.avatar;
     const user = await User.findByIdAndUpdate(req.user?._id,
         {
             $set: {
@@ -302,6 +307,11 @@ const updateUserAvatar = asyncHandler( async(req, res) => {
         {new : true}
     ).select("-password -refreshToken");
 
+    //deleting the old avatar image from cloudinary.
+    const response = await deleteFromCloudinary(oldAvatarPath);
+    if(!response){
+        throw new ApiError(500, "Failed to Delete Old Avatar");
+    }
     return res.status(200)
     .json(new ApiResponse(200, user, "Avatar Image Updated Successfully!!")); 
 });
@@ -316,8 +326,10 @@ const updateCoverImage = asyncHandler( async(req, res) => {
     if(!newCover.url){
         throw new ApiError(500, "CoverImage Uplaod Failed!!");
     }
+    const oldUser = await User.findById(req.user._id);
+    const oldCoverPath = oldUser.coverImage;
 
-    User.findByIdAndUpdate(req.user._id,
+    const user = await User.findByIdAndUpdate(req.user._id,
         {
             $set: {
                 coverImage: newCover.url,
@@ -325,6 +337,12 @@ const updateCoverImage = asyncHandler( async(req, res) => {
         },
         {new : true}
     ).select("-password -refreshToken");
+
+    //deleting the old cover image from cloudinary.
+    const response = await deleteFromCloudinary(oldCoverPath);
+    if(!response){
+        throw new ApiError(500, "Failed to Delete Old Cover Image");
+    }
 
     return res.status(200)
     .json(new ApiResponse(200, user, "Cover Image Changed Successfully!!"))
