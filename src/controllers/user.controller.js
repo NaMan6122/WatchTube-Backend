@@ -348,6 +348,95 @@ const updateCoverImage = asyncHandler( async(req, res) => {
     .json(new ApiResponse(200, user, "Cover Image Changed Successfully!!"))
 });
 
+//here, we will use agg. pipelines to gather information from DB which is to be displayed when a user views a particular channel.
+const getUserChannelProfile = asyncHandler( async(req, res) => {
+    //the channel will be accessed from the url, so we will extract the username of the channel from the url itself.
+    const {username} = req.params;
+    if(!username?.trim()){
+        throw new ApiError(400, "Channel Not Found!!");
+    }
+
+    //we will use the username to find the channel.
+    //await User.find({username}) //in this way we can find the id of the user and run aggregation pipelines based on that user id,
+    //but this is not needed as '$match' operator does it automatically.
+
+    const channel = await User.aggregate([
+        //first pipeline, where we are finding the document with the requested username.
+        {
+            $match: { //filtering a single document with the given username, which is the channel.
+                username : username?.toLowerCase(),
+            }
+        },
+        //second pipeline, where are trying to find out the subcriber count of the channel.
+        {
+            $lookup: {
+                from: "subscriptions", //"Subscription" becomes "subscriptions" in MongoDB entries.
+                localField: "_id", //field in User schema(local/ current).
+                foreignField: "channel", //field which we have to search for in other schema.
+                as: "subscribers", //what will the collective aggregation results be called as.
+            }
+        },
+        //third pipeline, where we are counting the number of channels to which the channel user has subscribed to.
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedChannels",
+            }
+        },
+        //fourth pipeline, where the above selected data will be grouped and added as new fields in User schema.
+        {
+            $addFields: {
+                subscribersCount: { //this will be the name of new field.
+                    $size: "$subscribers" 
+                },
+                channelsSubscribedTo: {
+                    $size: "$subscribedChannels"
+                },
+                isSubscribed: { //this is necessary to display whether the current user is subscribed to the channel he is viewing or not.
+                    $cond: {
+                        if: { $in: [req.user?._id, "$subscribers.subscriber"]}, //$in operator can search through both arrays and objects.
+                        then: true,
+                        else: false,
+                    }
+                }
+            }
+        },
+        //fifth pipeline, where we are filtering the data to only show the channel which the user.
+        {
+            //Passes along the documents with the requested fields to the next stage in the pipeline. 
+            //The specified fields can be existing fields from the input documents or newly computed fields.
+            $project: {
+                username: 1, //showing the username field.
+                fullName: 1,
+                subscribersCount: 1, //showing the subscribersCount field.
+                channelsSubscribedTo: 1, //showing the channelsSubscribedTo field.
+                isSubscribed: 1, //showing the isSubscribed field.
+                avatar: 1,
+                coverImage: 1,
+                email: 1,
+                createdAt: 1,
+            }
+        }
+
+    ]);
+
+    console.log(channel); //what does aggregate return? (return type etc).
+    //The aggregate method returns an array of documents that match the pipeline's criteria and transformations.
+
+    if(!channel?.length){ //if channel is empty array, which is a truthy value, this statement without '!' will return true.
+        throw new ApiError(400, "Channel Not Found");
+    } //adding '!' will reverse the value hence give correct value when working with truthy value.
+
+    //returning the channel details in the response body.
+    return res.status(200)
+    .json(new ApiResponse(200, channel[0], "Channel Details Fetched Successfully!!"));
+    //If the user with the specified username exists and matches the pipeline criteria,
+    //channel will be an array with one object containing the user details according to the $project pipeline stage.
+
+});
+
 export{
     loginUser,
     logoutUser,
@@ -358,4 +447,5 @@ export{
     updateUserProfile,
     updateUserAvatar,
     updateCoverImage,
+    getUserChannelProfile,
 }
