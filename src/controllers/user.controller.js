@@ -3,6 +3,7 @@ import { ApiError } from "../utils/apiError.js"
 import { User } from "../models/userModel.js"
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
+import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import path from "path";
 
@@ -170,8 +171,11 @@ const logoutUser = asyncHandler( async(req, res) => {
     //deleting the refreshToken.
     await User.findByIdAndUpdate(req.user._id,
         {
-            $set: {
-                refreshToken: undefined,
+            // $set: {
+            //     refreshToken: undefined,
+            // }
+            $unset: {
+                refreshToken: 1, //removes the field itself from the document.
             }
         },
         {
@@ -250,6 +254,7 @@ const changePassword = asyncHandler( async(req, res) => {
 });
 
 const getCurrentUser = asyncHandler( async(req, res) => {
+    console.log("User Details Sent!!")
     return res.status(200)
     .json(new ApiResponse(200,
         req.user,
@@ -278,7 +283,7 @@ const updateUserProfile = asyncHandler( async(req, res) => {
             }
         },
         {new : true}
-    ).select("-password -refreshToken")
+    ).select("-password -refreshToken");
 
     return res.status(200)
     .json(new ApiResponse(200, {}, "User Profile Updated Successfully!!"));
@@ -317,7 +322,7 @@ const updateUserAvatar = asyncHandler( async(req, res) => {
 });
 
 const updateCoverImage = asyncHandler( async(req, res) => {
-    const newCoverLocalPath = req.file?.path;
+    let newCoverLocalPath = req.file?.path;
     if(!newCoverLocalPath){
         throw new ApiError(400, "No Cover Image Found!!");
     }
@@ -437,6 +442,64 @@ const getUserChannelProfile = asyncHandler( async(req, res) => {
 
 });
 
+const getUserWatchHistory = asyncHandler( async(req, res) => {
+    const user = await User.aggregate([
+        {
+            //looking for the user, whose watchHistory is to be fetched.
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user?._id),
+            }
+        },
+        {
+            //looking for the watchHistory of the user,  going through each video.
+            $lookup: { 
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
+                    {
+                        $lookup: { //Nested pipeline, due to complex dependency, looking for owner field which is a user, simultaneously.
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: { //restriction on what fields should be sent in the owner field, to watchHistory. 
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1,
+                                    }
+                                },
+                                {
+                                    $addFields: { //here, instead of sending an Array, we are directly sending its first object, which contains the info about owner,
+                                        owner: { //overriding the owner field itself.
+                                            $first: "$owner",
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $project: { //restriction on what should be sent as each watchHistory.
+                watchHistory: 1,
+            }
+        }
+    ]);
+
+    if(!user?.length){
+        throw new ApiError(400, "User Does Not Exist!!")
+    }
+
+    return res.status(200)
+    .json(new ApiResponse(200, user[0], "Watch History Fetched Successfully!!"));
+});
+
 export{
     loginUser,
     logoutUser,
@@ -448,4 +511,5 @@ export{
     updateUserAvatar,
     updateCoverImage,
     getUserChannelProfile,
+    getUserWatchHistory,
 }
