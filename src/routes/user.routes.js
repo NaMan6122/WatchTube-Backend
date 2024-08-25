@@ -31,6 +31,6 @@ router.route("/update-profile").patch(verifyJWT, updateUserProfile);
 router.route("/update-avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 router.route("/update-cover-image").patch(verifyJWT, upload.single("coverImage"), updateCoverImage);
 router.route("/channel/:username").get(verifyJWT, getUserChannelProfile);
-router.route("/history").get(verifyJWT, getUserWatchHistory);
+router.route("/history").get(verifyJWT, getUserWatchHistory); //signifies that username is a route parameter.
 
 export default router;

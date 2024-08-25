@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 
 //as we know, middleware adds more properties in req, res objects so that we can implement more functionalities and checks.
 
-export const verifyJWT = asyncHandler( async (req, res, next) => {
+export const verifyJWT = asyncHandler( async (req, res, next) => { //uses cookies/ headers(for mobile apps) to verify.
     //fetching the accessToken from cookies or header wherever it exists.
     //in header, it is found as: Authorization: Bearer <token>,  so we remove the "Bearer".
     const accessToken = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer", "");
@@ -26,4 +26,4 @@ export const verifyJWT = asyncHandler( async (req, res, next) => {
     req.user = user;
     next();
 
-})
+});
